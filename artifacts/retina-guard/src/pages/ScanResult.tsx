@@ -273,11 +273,45 @@ function buildNarration(lang: LangCode, drStage: number, riskLevel: string, conf
   const stage = DR_STAGE_LABELS[lang][drStage] ?? DR_STAGE_LABELS[lang][0];
   const risk  = RISK_LABELS[lang][riskLevel] ?? riskLevel;
 
-  if (lang === "ta-IN") return `நோயாளி ஸ்கேன் பகுப்பாய்வு முடிந்தது. கண்டறியப்பட்டது: ${stage}. ஆபத்து நிலை ${risk}. நம்பகத்தன்மை மதிப்பெண் ${confidence} சதவீதம். பரிந்துரை: ${recommendation}`;
-  if (lang === "hi-IN") return `मरीज़ की स्कैन जांच पूरी हुई। पता चला: ${stage}। जोखिम स्तर ${risk} है। विश्वास स्कोर ${confidence} प्रतिशत है। सिफारिश: ${recommendation}`;
-  if (lang === "te-IN") return `రోగి స్కాన్ విశ్లేషణ పూర్తయింది. కనుగొనబడింది: ${stage}. ప్రమాద స్థాయి ${risk}. నమ్మకం స్కోర్ ${confidence} శాతం. సిఫారసు: ${recommendation}`;
-  if (lang === "ml-IN") return `രോഗിയുടെ സ്‌കാൻ വിശകലനം പൂർത്തിയായി. കണ്ടെത്തൽ: ${stage}. അപകട നില ${risk}. ആത്മവിശ്വാസ സ്‌കോർ ${confidence} ശതമാനം. ശുപാർശ: ${recommendation}`;
-  return `Patient scan analysis complete. Detected: ${stage}. Risk level is ${risk}. Confidence score is ${confidence} percent. Recommendation: ${recommendation}`;
+  if (lang === "ta-IN") return [
+    `நோயாளி ஸ்கேன் பகுப்பாய்வு முடிந்தது.`,
+    `கண்டறியப்பட்டது: ${stage}.`,
+    `ஆபத்து நிலை ${risk}.`,
+    `நம்பகத்தன்மை மதிப்பெண் ${confidence} சதவீதம்.`,
+    `பரிந்துரை: ${recommendation}`,
+  ].join("  ");
+
+  if (lang === "hi-IN") return [
+    `मरीज़ की स्कैन जांच पूरी हुई।`,
+    `पता चला: ${stage}।`,
+    `जोखिम स्तर ${risk} है।`,
+    `विश्वास स्कोर ${confidence} प्रतिशत है।`,
+    `सिफारिश: ${recommendation}`,
+  ].join("  ");
+
+  if (lang === "te-IN") return [
+    `రోగి స్కాన్ విశ్లేషణ పూర్తయింది.`,
+    `కనుగొనబడింది: ${stage}.`,
+    `ప్రమాద స్థాయి ${risk}.`,
+    `నమ్మకం స్కోర్ ${confidence} శాతం.`,
+    `సిఫారసు: ${recommendation}`,
+  ].join("  ");
+
+  if (lang === "ml-IN") return [
+    `രോഗിയുടെ സ്‌കാൻ വിശകലനം പൂർത്തിയായി.`,
+    `കണ്ടെത്തൽ: ${stage}.`,
+    `അപകട നില ${risk}.`,
+    `ആത്മവിശ്വാസ സ്‌കോർ ${confidence} ശതമാനം.`,
+    `ശുപാർശ: ${recommendation}`,
+  ].join("  ");
+
+  return [
+    `Patient scan analysis complete.`,
+    `Detected: ${stage}.`,
+    `Risk level is ${risk}.`,
+    `Confidence score is ${confidence} percent.`,
+    `Recommendation: ${recommendation}`,
+  ].join("  ");
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -339,8 +373,10 @@ export default function ScanResult() {
     }
     const text = buildNarration(selectedLanguage, scan.drStage, scan.riskLevel, confidence, recommendation);
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang  = selectedLanguage;
-    utterance.rate  = 0.9;
+    utterance.lang   = selectedLanguage;
+    utterance.rate   = 0.8;
+    utterance.pitch  = 1;
+    utterance.volume = 1;
     utterance.onend   = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     utteranceRef.current = utterance;
