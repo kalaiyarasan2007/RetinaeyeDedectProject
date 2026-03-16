@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGetPatients, useAnalyzeScan } from "@workspace/api-client-react";
 import { UploadCloud, Image as ImageIcon, AlertCircle, ScanLine, X } from "lucide-react";
 import { useDropzone } from "react-dropzone";
+import { cn } from "@/lib/utils";
 
 export default function UploadAnalyze() {
   const [, setLocation] = useLocation();
