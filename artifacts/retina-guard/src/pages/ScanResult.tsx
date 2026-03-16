@@ -1,13 +1,54 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
 import { useGetScan, useUpdateScan } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { formatMedicalDate, cn } from "@/lib/utils";
 import { 
-  AlertTriangle, CheckCircle, Volume2, Printer, ChevronLeft, 
-  Stethoscope, Info, Activity, FileText
+  AlertTriangle, CheckCircle, Volume2, VolumeX, Printer, ChevronLeft, 
+  Stethoscope, Activity, FileText, Languages
 } from "lucide-react";
+
+type LangCode = "en-US" | "ta-IN" | "hi-IN";
+
+interface LangOption {
+  code: LangCode;
+  label: string;
+  flag: string;
+}
+
+const LANGUAGES: LangOption[] = [
+  { code: "en-US", label: "English", flag: "🇺🇸" },
+  { code: "ta-IN", label: "Tamil",   flag: "🇮🇳" },
+  { code: "hi-IN", label: "Hindi",   flag: "🇮🇳" },
+];
+
+const DR_STAGE_LABELS: Record<LangCode, string[]> = {
+  "en-US": ["No Diabetic Retinopathy", "Mild Diabetic Retinopathy", "Moderate Diabetic Retinopathy", "Severe Diabetic Retinopathy", "Proliferative Diabetic Retinopathy"],
+  "ta-IN": ["நீரிழிவு விழித்திரை நோய் இல்லை", "லேசான நீரிழிவு விழித்திரை நோய்", "மிதமான நீரிழிவு விழித்திரை நோய்", "கடுமையான நீரிழிவு விழித்திரை நோய்", "பெருக்க நீரிழிவு விழித்திரை நோய்"],
+  "hi-IN": ["डायबिटिक रेटिनोपैथी नहीं", "हल्की डायबिटिक रेटिनोपैथी", "मध्यम डायबिटिक रेटिनोपैथी", "गंभीर डायबिटिक रेटिनोपैथी", "प्रोलिफेरेटिव डायबिटिक रेटिनोपैथी"],
+};
+
+const RISK_LABELS: Record<LangCode, Record<string, string>> = {
+  "en-US": { low: "Low", medium: "Medium", high: "High", critical: "Critical" },
+  "ta-IN": { low: "குறைந்த", medium: "நடுத்தர", high: "அதிக", critical: "மிகவும் அபாயகரமான" },
+  "hi-IN": { low: "कम", medium: "मध्यम", high: "उच्च", critical: "अति गंभीर" },
+};
+
+function getNarrationText(lang: LangCode, scan: { drStage: number; confidenceScore: number; riskLevel: string; recommendation: string }): string {
+  const stage = scan.drStage;
+  const confidence = (scan.confidenceScore * 100).toFixed(1);
+  const stageLabel = DR_STAGE_LABELS[lang][stage] ?? DR_STAGE_LABELS[lang][0];
+  const riskLabel = RISK_LABELS[lang][scan.riskLevel] ?? scan.riskLevel;
+
+  if (lang === "ta-IN") {
+    return `நோயாளி ஸ்கேன் பகுப்பாய்வு முடிந்தது. கண்டறியப்பட்டது: ${stageLabel}. ஆபத்து நிலை ${riskLabel}. நம்பகத்தன்மை மதிப்பெண் ${confidence} சதவீதம். பரிந்துரை: நிபுணரை அணுகவும் மற்றும் சர்க்கரை அளவை கட்டுப்படுத்தவும்.`;
+  }
+  if (lang === "hi-IN") {
+    return `मरीज़ की स्कैन जांच पूरी हुई। पता चला: ${stageLabel}। जोखिम स्तर ${riskLabel} है। विश्वास स्कोर ${confidence} प्रतिशत है। सिफारिश: विशेषज्ञ से परामर्श करें और रक्त शर्करा नियंत्रित रखें।`;
+  }
+  return `Patient scan analysis complete. Detected: ${stageLabel}. Risk level is ${riskLabel}. Confidence score is ${confidence} percent. Recommendation: ${scan.recommendation}`;
+}
 
 export default function ScanResult() {
   const [, params] = useRoute("/scans/:id");
@@ -18,27 +59,45 @@ export default function ScanResult() {
   
   const [doctorNotes, setDoctorNotes] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<LangCode>("en-US");
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     if (scan?.doctorNotes) setDoctorNotes(scan.doctorNotes);
   }, [scan]);
 
+  // Stop speaking when language changes
+  useEffect(() => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, [selectedLanguage]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { window.speechSynthesis.cancel(); };
+  }, []);
+
   if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading Scan Data...</div>;
   if (!scan) return <div className="p-8 text-center text-destructive font-bold">Scan not found.</div>;
 
   const handleSpeak = () => {
-    if ('speechSynthesis' in window) {
-      if (isSpeaking) {
-        window.speechSynthesis.cancel();
-        setIsSpeaking(false);
-        return;
-      }
-      const text = `Patient scan analysis complete. Detected Diabetic Retinopathy Stage ${scan.drStage}. Risk level is ${scan.riskLevel}. Confidence score is ${(scan.confidenceScore * 100).toFixed(1)} percent. Recommendation: ${scan.recommendation}`;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.onend = () => setIsSpeaking(false);
-      setIsSpeaking(true);
-      window.speechSynthesis.speak(utterance);
+    if (!('speechSynthesis' in window)) return;
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
     }
+    const text = getNarrationText(selectedLanguage, scan);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = selectedLanguage;
+    utterance.rate = 0.9;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    utteranceRef.current = utterance;
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
   };
 
   const handleConfirm = async () => {
@@ -86,14 +145,37 @@ export default function ScanResult() {
             <p className="text-muted-foreground mt-1">Scan ID: {scan.id} • {formatMedicalDate(scan.createdAt)}</p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <button 
-            onClick={handleSpeak}
-            className={cn("p-3 rounded-xl border border-border shadow-sm transition-colors", isSpeaking ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground hover:bg-muted")}
-            title="Read out loud"
-          >
-            <Volume2 className="w-5 h-5" />
-          </button>
+        <div className="flex items-center gap-3">
+          {/* Language + Audio cluster */}
+          <div className="flex items-center gap-1 bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+            <div className="flex items-center gap-1.5 px-3 py-2 border-r border-border text-muted-foreground">
+              <Languages className="w-4 h-4 shrink-0" />
+              <select
+                value={selectedLanguage}
+                onChange={e => setSelectedLanguage(e.target.value as LangCode)}
+                className="bg-transparent text-sm font-medium text-foreground focus:outline-none cursor-pointer pr-1"
+                title="Select narration language"
+              >
+                {LANGUAGES.map(l => (
+                  <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={handleSpeak}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 transition-colors font-semibold text-sm",
+                isSpeaking
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground hover:bg-muted"
+              )}
+              title={isSpeaking ? "Stop narration" : "Read report aloud"}
+            >
+              {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isSpeaking ? "Stop" : "Listen"}
+            </button>
+          </div>
+
           <Link 
             href={`/reports/${scan.id}`} 
             className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-xl shadow-sm hover:bg-muted transition-colors font-semibold"
