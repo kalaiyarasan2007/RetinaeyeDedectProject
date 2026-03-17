@@ -2,7 +2,8 @@ import { Router, type IRouter } from "express";
 import { db, scansTable, patientsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { AnalyzeScanBody, UpdateScanBody } from "@workspace/api-zod";
-import { simulateAIAnalysis } from "../lib/ai-simulation.js";
+import { buildAnalysisResult } from "../lib/ai-simulation.js";
+import { analyzeRetinalImage } from "../lib/image-analysis.js";
 
 const router: IRouter = Router();
 
@@ -52,7 +53,9 @@ router.post("/analyze", async (req, res) => {
       return res.status(400).json({ error: "Patient not found" });
     }
 
-    const analysis = simulateAIAnalysis();
+    // Run real pixel-level retinal image analysis when an image is provided
+    const imageAnalysis = imageData ? await analyzeRetinalImage(imageData) : null;
+    const analysis = buildAnalysisResult(imageAnalysis);
 
     const [scan] = await db.insert(scansTable).values({
       patientId,

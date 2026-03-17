@@ -1,3 +1,5 @@
+import type { ImageAnalysisResult, HeatmapPoint } from "./image-analysis.js";
+
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
 export interface AnalysisResult {
@@ -18,11 +20,11 @@ const DR_STAGE_NAMES = [
 ];
 
 const RECOMMENDATIONS = [
-  "Continue routine annual eye exams. Maintain good blood sugar and blood pressure control. No specific treatment required at this time.",
-  "Follow up with ophthalmologist every 6-9 months. Focus on improving glycemic control. Consider lifestyle modifications.",
-  "Refer to retinal specialist within 3-6 months. Intensify glycemic management. Consider laser photocoagulation evaluation.",
-  "URGENT: Refer to retinal specialist within 1 month. High risk of vision loss. Anti-VEGF therapy or laser treatment may be needed.",
-  "EMERGENCY: Immediate referral to vitreoretinal surgeon. Vitrectomy or pan-retinal photocoagulation required. Risk of blindness is very high.",
+  "Your retinal scan looks healthy. No signs of diabetic eye disease were found. Keep having your eyes checked once a year, and keep your blood sugar under control.",
+  "Small changes were found in your retina. No treatment is needed right now. Visit your eye doctor every 6 months, eat healthy, and manage your blood sugar carefully.",
+  "Noticeable changes were found in your retina. Please see an eye specialist within 3 to 6 months. Keep blood sugar tightly controlled. Laser treatment may be needed.",
+  "URGENT: Serious damage found in your retina. See an eye specialist within 1 month. Do not delay — vision loss is possible if untreated. Treatment such as laser or injections may be required.",
+  "EMERGENCY: Very severe damage found. Go to the hospital immediately. Surgery may be needed. Delay can cause permanent blindness.",
 ];
 
 function getRiskLevel(drStage: number): RiskLevel {
@@ -32,62 +34,74 @@ function getRiskLevel(drStage: number): RiskLevel {
   return "critical";
 }
 
-function getBlindnessRiskScore(drStage: number, confidence: number): number {
+function getBlindnessRiskScore(drStage: number): number {
   const baseScores = [5, 20, 40, 65, 90];
   const base = baseScores[drStage] ?? 5;
-  const variance = Math.floor((Math.random() - 0.5) * 10);
+  const variance = Math.floor((Math.random() - 0.5) * 8);
   return Math.min(100, Math.max(0, base + variance));
 }
 
-function generateHeatmap(drStage: number): string {
-  const numSpots = drStage === 0 ? 0 : 3 + drStage * 3;
-  const spots = [];
-
-  for (let i = 0; i < numSpots; i++) {
-    spots.push({
-      x: 20 + Math.random() * 60,
-      y: 20 + Math.random() * 60,
-      intensity: 0.4 + (drStage / 4) * 0.6 + (Math.random() - 0.5) * 0.2,
-      radius: 5 + Math.random() * (drStage * 3),
-    });
-  }
-
-  if (drStage >= 3) {
-    spots.push({
-      x: 50,
-      y: 50,
-      intensity: 0.9,
-      radius: 8 + drStage * 2,
-    });
-  }
-
-  return JSON.stringify(spots);
-}
-
-export function simulateAIAnalysis(): AnalysisResult {
-  const rand = Math.random();
+/**
+ * Build a final AnalysisResult from a real image analysis.
+ * When imageAnalysis is provided the DR stage, confidence score and heatmap
+ * all come from actual pixel measurements of the retinal image.
+ * If imageAnalysis is null (no image provided) a pure simulation is used.
+ */
+export function buildAnalysisResult(
+  imageAnalysis: ImageAnalysisResult | null
+): AnalysisResult {
   let drStage: number;
+  let confidenceScore: number;
+  let heatmapPoints: HeatmapPoint[];
 
-  if (rand < 0.35) drStage = 0;
-  else if (rand < 0.55) drStage = 1;
-  else if (rand < 0.73) drStage = 2;
-  else if (rand < 0.88) drStage = 3;
-  else drStage = 4;
+  if (imageAnalysis) {
+    // Use image-derived values
+    drStage         = imageAnalysis.drStage;
+    confidenceScore = imageAnalysis.confidenceScore;
+    heatmapPoints   = imageAnalysis.heatmapPoints;
+  } else {
+    // Fallback: random simulation (no image provided)
+    const rand = Math.random();
+    if      (rand < 0.35) drStage = 0;
+    else if (rand < 0.55) drStage = 1;
+    else if (rand < 0.73) drStage = 2;
+    else if (rand < 0.88) drStage = 3;
+    else                  drStage = 4;
 
-  const confidenceScore = parseFloat((0.72 + Math.random() * 0.25).toFixed(3));
-  const riskLevel = getRiskLevel(drStage);
-  const blindnessRiskScore = getBlindnessRiskScore(drStage, confidenceScore);
-  const heatmapData = generateHeatmap(drStage);
-  const recommendation = RECOMMENDATIONS[drStage] ?? RECOMMENDATIONS[0]!;
+    confidenceScore = parseFloat((0.72 + Math.random() * 0.25).toFixed(3));
+    heatmapPoints   = generateFallbackHeatmap(drStage);
+  }
 
   return {
     drStage,
     confidenceScore,
-    riskLevel,
-    blindnessRiskScore,
-    heatmapData,
-    recommendation,
+    riskLevel:          getRiskLevel(drStage),
+    blindnessRiskScore: getBlindnessRiskScore(drStage),
+    heatmapData:        JSON.stringify(heatmapPoints),
+    recommendation:     RECOMMENDATIONS[drStage] ?? RECOMMENDATIONS[0]!,
   };
+}
+
+/** Keep the old export name for any other callers. */
+export function simulateAIAnalysis(): AnalysisResult {
+  return buildAnalysisResult(null);
+}
+
+function generateFallbackHeatmap(drStage: number): HeatmapPoint[] {
+  const numSpots = drStage === 0 ? 0 : 3 + drStage * 3;
+  const spots: HeatmapPoint[] = [];
+  for (let i = 0; i < numSpots; i++) {
+    spots.push({
+      x:         20 + Math.random() * 60,
+      y:         20 + Math.random() * 60,
+      intensity: 0.4 + (drStage / 4) * 0.6 + (Math.random() - 0.5) * 0.2,
+      radius:    5 + Math.random() * (drStage * 3),
+    });
+  }
+  if (drStage >= 3) {
+    spots.push({ x: 50, y: 50, intensity: 0.9, radius: 8 + drStage * 2 });
+  }
+  return spots;
 }
 
 export { DR_STAGE_NAMES };
