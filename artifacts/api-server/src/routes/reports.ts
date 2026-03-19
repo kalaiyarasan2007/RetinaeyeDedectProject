@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, scansTable, patientsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { DR_STAGE_NAMES } from "../lib/ai-simulation.js";
 
 const router: IRouter = Router();
@@ -23,17 +23,21 @@ const TREATMENT_PLANS: Record<number, string> = {
 router.get("/:scanId", async (req, res) => {
   try {
     const scanId = parseInt(req.params["scanId"] ?? "0", 10);
-    const [scan] = await db.select().from(scansTable).where(eq(scansTable.id, scanId));
+    const [scan] = await db.select().from(scansTable).where(
+      and(eq(scansTable.id, scanId), eq(scansTable.isDeleted, false))
+    );
     if (!scan) return res.status(404).json({ error: "Scan not found" });
 
-    const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.id, scan.patientId));
+    const [patient] = await db.select().from(patientsTable).where(
+      and(eq(patientsTable.id, scan.patientId), eq(patientsTable.isDeleted, false))
+    );
     if (!patient) return res.status(404).json({ error: "Patient not found" });
 
     const drStageName = DR_STAGE_NAMES[scan.drStage] ?? "Unknown";
     const riskDescription = RISK_DESCRIPTIONS[scan.riskLevel] ?? "";
     const treatmentPlan = TREATMENT_PLANS[scan.drStage] ?? "";
 
-    res.json({
+    return res.json({
       scan: { ...scan, patientName: patient.name },
       patient,
       generatedAt: new Date().toISOString(),
@@ -42,7 +46,7 @@ router.get("/:scanId", async (req, res) => {
       treatmentPlan,
     });
   } catch (err) {
-    res.status(500).json({ error: "Failed to generate report" });
+    return res.status(500).json({ error: "Failed to generate report" });
   }
 });
 

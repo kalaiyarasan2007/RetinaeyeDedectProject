@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, scansTable, patientsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { AnalyzeScanBody, UpdateScanBody } from "@workspace/api-zod";
 import { buildAnalysisResult } from "../lib/ai-simulation.js";
 import { analyzeRetinalImage } from "../lib/image-analysis.js";
@@ -15,10 +15,11 @@ router.get("/", async (req, res) => {
     let scansRaw;
     if (patientId) {
       scansRaw = await db.select().from(scansTable)
-        .where(eq(scansTable.patientId, patientId))
+        .where(and(eq(scansTable.patientId, patientId), eq(scansTable.isDeleted, false)))
         .orderBy(desc(scansTable.createdAt));
     } else {
       scansRaw = await db.select().from(scansTable)
+        .where(eq(scansTable.isDeleted, false))
         .orderBy(desc(scansTable.createdAt));
     }
 
@@ -33,13 +34,14 @@ router.get("/", async (req, res) => {
       patientName: patientMap.get(s.patientId) ?? null,
     }));
 
-    res.json(scans);
+    return res.json(scans);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch scans" });
+    return res.status(500).json({ error: "Failed to fetch scans" });
   }
 });
 
 router.post("/analyze", async (req, res) => {
+  const uploadedAt = new Date();
   try {
     const parsed = AnalyzeScanBody.safeParse(req.body);
     if (!parsed.success) {
@@ -61,6 +63,7 @@ router.post("/analyze", async (req, res) => {
       patientId,
       imageData,
       drStage: analysis.drStage,
+      createdAt: uploadedAt, // Save exact upload UTC boundary
       confidenceScore: analysis.confidenceScore,
       riskLevel: analysis.riskLevel,
       blindnessRiskScore: analysis.blindnessRiskScore,
@@ -69,22 +72,24 @@ router.post("/analyze", async (req, res) => {
       recommendation: analysis.recommendation,
     }).returning();
 
-    res.status(201).json({ ...scan, patientName: patient.name });
+    return res.status(201).json({ ...scan, patientName: patient.name });
   } catch (err) {
-    res.status(500).json({ error: "Failed to analyze scan" });
+    return res.status(500).json({ error: "Failed to analyze scan" });
   }
 });
 
 router.get("/:id", async (req, res) => {
   try {
     const id = parseInt(req.params["id"] ?? "0", 10);
-    const [scan] = await db.select().from(scansTable).where(eq(scansTable.id, id));
+    const [scan] = await db.select().from(scansTable).where(
+      and(eq(scansTable.id, id), eq(scansTable.isDeleted, false))
+    );
     if (!scan) return res.status(404).json({ error: "Scan not found" });
 
     const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.id, scan.patientId));
-    res.json({ ...scan, patientName: patient?.name ?? null });
+    return res.json({ ...scan, patientName: patient?.name ?? null });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch scan" });
+    return res.status(500).json({ error: "Failed to fetch scan" });
   }
 });
 
@@ -96,7 +101,9 @@ router.patch("/:id", async (req, res) => {
       return res.status(400).json({ error: "Invalid input" });
     }
 
-    const [existingScan] = await db.select().from(scansTable).where(eq(scansTable.id, id));
+    const [existingScan] = await db.select().from(scansTable).where(
+      and(eq(scansTable.id, id), eq(scansTable.isDeleted, false))
+    );
     if (!existingScan) return res.status(404).json({ error: "Scan not found" });
 
     const updateData: Record<string, unknown> = {};
@@ -116,9 +123,25 @@ router.patch("/:id", async (req, res) => {
       .returning();
 
     const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.id, updatedScan!.patientId));
-    res.json({ ...updatedScan, patientName: patient?.name ?? null });
+    return res.json({ ...updatedScan, patientName: patient?.name ?? null });
   } catch (err) {
-    res.status(500).json({ error: "Failed to update scan" });
+    return res.status(500).json({ error: "Failed to update scan" });
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params["id"] ?? "0", 10);
+    const [scan] = await db.update(scansTable)
+      .set({ isDeleted: true })
+      .where(eq(scansTable.id, id))
+      .returning();
+
+    if (!scan) return res.status(404).json({ error: "Scan not found" });
+    
+    return res.json({ success: true, message: "Scan deleted successfully" });
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to delete scan" });
   }
 });
 

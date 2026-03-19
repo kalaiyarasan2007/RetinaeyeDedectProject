@@ -20,6 +20,8 @@ import type {
   AnalyticsSummary,
   AnalyzeScanInput,
   CreatePatientInput,
+  DeletePatient200,
+  DeleteScan200,
   ErrorResponse,
   GetScansParams,
   HealthStatus,
@@ -363,6 +365,90 @@ export function useGetPatient<
 }
 
 /**
+ * @summary Delete a patient
+ */
+export const getDeletePatientUrl = (id: number) => {
+  return `/api/patients/${id}`;
+};
+
+export const deletePatient = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeletePatient200> => {
+  return customFetch<DeletePatient200>(getDeletePatientUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePatientMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePatient>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePatient>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deletePatient"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePatient>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deletePatient(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePatientMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePatient>>
+>;
+
+export type DeletePatientMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a patient
+ */
+export const useDeletePatient = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePatient>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePatient>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeletePatientMutationOptions(options));
+};
+
+/**
  * @summary List scans
  */
 export const getGetScansUrl = (params?: GetScansParams) => {
@@ -704,6 +790,90 @@ export const useUpdateScan = <
   TContext
 > => {
   return useMutation(getUpdateScanMutationOptions(options));
+};
+
+/**
+ * @summary Delete a scan
+ */
+export const getDeleteScanUrl = (id: number) => {
+  return `/api/scans/${id}`;
+};
+
+export const deleteScan = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteScan200> => {
+  return customFetch<DeleteScan200>(getDeleteScanUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteScanMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteScan>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteScan>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteScan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteScan>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteScan(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteScanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteScan>>
+>;
+
+export type DeleteScanMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a scan
+ */
+export const useDeleteScan = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteScan>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteScan>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteScanMutationOptions(options));
 };
 
 /**

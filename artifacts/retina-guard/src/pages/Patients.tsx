@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useGetPatients, useCreatePatient } from "@workspace/api-client-react";
+import { useGetPatients, useCreatePatient, useDeletePatient } from "@workspace/api-client-react";
 import { formatMedicalDate } from "@/lib/utils";
 import { Search, Plus, User, Activity, AlertCircle, X } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export default function Patients() {
   const { data: patients, isLoading, refetch } = useGetPatients();
   const createMutation = useCreatePatient();
+  const deleteMutation = useDeletePatient();
   
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -98,9 +100,19 @@ export default function Patients() {
                     </td>
                     <td className="p-4 text-sm text-muted-foreground">{formatMedicalDate(patient.createdAt)}</td>
                     <td className="p-4">
-                      <Link href={`/patients/${patient.id}`} className="text-primary font-semibold hover:underline text-sm flex items-center gap-1">
-                        View History <Activity className="w-4 h-4" />
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <Link href={`/patients/${patient.id}`} className="text-primary font-semibold hover:underline text-sm flex items-center gap-1">
+                          View History <Activity className="w-4 h-4" />
+                        </Link>
+                        <DeleteButton 
+                          onDelete={async () => {
+                            await deleteMutation.mutateAsync({ id: patient.id });
+                            refetch();
+                          }} 
+                          title="Delete Patient?"
+                          description="This will remove the patient and all associated scans. This action cannot be undone."
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))

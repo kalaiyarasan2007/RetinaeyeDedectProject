@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -9,6 +9,7 @@ export const patientsTable = pgTable("patients", {
   gender: text("gender").notNull(),
   diabetesType: text("diabetes_type"),
   contactInfo: text("contact_info"),
+  isDeleted: boolean("is_deleted").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

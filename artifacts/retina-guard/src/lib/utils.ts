@@ -5,14 +5,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatMedicalDate(dateStr: string) {
+export function formatMedicalDate(dateStr: string | Date) {
+  if (!dateStr) return "-";
   try {
-    const d = new Date(dateStr);
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    }).format(d);
+    const d = typeof dateStr === "string" 
+      ? new Date(dateStr.includes("T") || dateStr.includes("Z") ? dateStr : dateStr.replace(" ", "T") + "Z") 
+      : dateStr;
+    
+    return d.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    });
   } catch (e) {
-    return dateStr;
+    return typeof dateStr === "string" ? dateStr : "-";
   }
 }

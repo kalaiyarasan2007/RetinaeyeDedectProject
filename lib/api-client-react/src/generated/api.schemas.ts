@@ -172,9 +172,19 @@ export interface AnalyticsSummary {
   recentScans: Scan[];
 }
 
+export type DeletePatient200 = {
+  success?: boolean;
+  message?: string;
+};
+
 export type GetScansParams = {
   /**
    * @nullable
    */
   patientId?: number | null;
+};
+
+export type DeleteScan200 = {
+  success?: boolean;
+  message?: string;
 };

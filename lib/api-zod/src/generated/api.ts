@@ -81,6 +81,18 @@ export const GetPatientResponse = zod.object({
 });
 
 /**
+ * @summary Delete a patient
+ */
+export const DeletePatientParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeletePatientResponse = zod.object({
+  success: zod.boolean().optional(),
+  message: zod.string().optional(),
+});
+
+/**
  * @summary List scans
  */
 export const GetScansQueryParams = zod.object({
@@ -219,6 +231,18 @@ export const UpdateScanResponse = zod.object({
   doctorId: zod.string().nullable(),
   recommendation: zod.string(),
   createdAt: zod.date(),
+});
+
+/**
+ * @summary Delete a scan
+ */
+export const DeleteScanParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteScanResponse = zod.object({
+  success: zod.boolean().optional(),
+  message: zod.string().optional(),
 });
 
 /**

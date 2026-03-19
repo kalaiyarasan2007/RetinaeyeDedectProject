@@ -15,6 +15,7 @@ export const scansTable = pgTable("scans", {
   doctorNotes: text("doctor_notes"),
   doctorId: text("doctor_id"),
   recommendation: text("recommendation").notNull(),
+  isDeleted: boolean("is_deleted").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

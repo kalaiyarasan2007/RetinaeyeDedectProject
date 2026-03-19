@@ -11,6 +11,8 @@ export * from "./analyzeScanInput";
 export * from "./createPatientInput";
 export * from "./createPatientInputDiabetesType";
 export * from "./createPatientInputGender";
+export * from "./deletePatient200";
+export * from "./deleteScan200";
 export * from "./drStageDistribution";
 export * from "./errorResponse";
 export * from "./getScansParams";

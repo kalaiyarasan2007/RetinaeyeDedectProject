@@ -1,12 +1,14 @@
 import React from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useGetScans } from "@workspace/api-client-react";
+import { useGetScans, useDeleteScan } from "@workspace/api-client-react";
 import { formatMedicalDate } from "@/lib/utils";
 import { ClipboardCheck, ArrowRight, AlertTriangle } from "lucide-react";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export default function DoctorReview() {
-  const { data: scans, isLoading } = useGetScans();
+  const { data: scans, isLoading, refetch } = useGetScans();
+  const deleteScanMutation = useDeleteScan();
 
   const unconfirmedScans = scans?.filter(s => !s.doctorConfirmed).sort((a, b) => b.drStage - a.drStage) || [];
 
@@ -50,8 +52,18 @@ export default function DoctorReview() {
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-border text-primary font-bold text-sm">
-                    Review Details
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <span className="flex items-center">
+                      Review Details
+                      <ArrowRight className="ml-1 w-4 h-4 group-hover:translate-x-1 transition-transform inline" />
+                    </span>
+                    <DeleteButton 
+                      onDelete={async () => {
+                        await deleteScanMutation.mutateAsync({ id: scan.id });
+                        refetch();
+                      }}
+                      title="Delete Scan?"
+                      description="This will permanently delete this scan and its analysis. This action cannot be undone."
+                    />
                   </div>
                 </div>
               </div>

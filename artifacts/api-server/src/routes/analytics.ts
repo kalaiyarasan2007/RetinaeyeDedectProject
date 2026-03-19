@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, scansTable, patientsTable } from "@workspace/db";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { DR_STAGE_NAMES } from "../lib/ai-simulation.js";
 
 const router: IRouter = Router();
@@ -8,8 +8,8 @@ const router: IRouter = Router();
 router.get("/summary", async (_req, res) => {
   try {
     const [patients, scans] = await Promise.all([
-      db.select().from(patientsTable),
-      db.select().from(scansTable).orderBy(desc(scansTable.createdAt)),
+      db.select().from(patientsTable).where(eq(patientsTable.isDeleted, false)),
+      db.select().from(scansTable).where(eq(scansTable.isDeleted, false)).orderBy(desc(scansTable.createdAt)),
     ]);
 
     const totalPatients = patients.length;

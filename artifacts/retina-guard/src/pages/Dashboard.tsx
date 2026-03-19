@@ -1,13 +1,15 @@
 import React from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useGetAnalyticsSummary, useGetScans } from "@workspace/api-client-react";
+import { useGetAnalyticsSummary, useGetScans, useDeleteScan } from "@workspace/api-client-react";
 import { formatMedicalDate } from "@/lib/utils";
 import { Activity, AlertTriangle, CheckCircle, FileImage, ArrowRight, UploadCloud } from "lucide-react";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export default function Dashboard() {
-  const { data: analytics, isLoading: analyticsLoading } = useGetAnalyticsSummary();
-  const { data: recentScans, isLoading: scansLoading } = useGetScans();
+  const { data: analytics, isLoading: analyticsLoading, refetch: refetchAnalytics } = useGetAnalyticsSummary();
+  const { data: recentScans, isLoading: scansLoading, refetch: refetchScans } = useGetScans();
+  const deleteScanMutation = useDeleteScan();
 
   const getRiskColor = (level: string) => {
     switch (level) {
@@ -116,9 +118,20 @@ export default function Dashboard() {
                       )}
                     </td>
                     <td className="p-4">
-                      <Link href={`/scans/${scan.id}`} className="text-primary font-semibold hover:text-teal-400 transition-colors text-sm">
-                        View Result
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <Link href={`/scans/${scan.id}`} className="text-primary font-semibold hover:text-teal-400 transition-colors text-sm">
+                          View Result
+                        </Link>
+                        <DeleteButton 
+                          onDelete={async () => {
+                            await deleteScanMutation.mutateAsync({ id: scan.id });
+                            refetchScans();
+                            refetchAnalytics();
+                          }}
+                          title="Delete Scan?"
+                          description="This will permanently delete this scan and its analysis. This action cannot be undone."
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))

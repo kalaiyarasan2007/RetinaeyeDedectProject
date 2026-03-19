@@ -60,6 +60,8 @@ export default function UploadAnalyze() {
         }
       });
       
+      console.log("API Response:", scan);
+      
       setLocation(`/scans/${scan.id}`);
     } catch (err: any) {
       setError(err.message || "Analysis failed. Please try again.");
